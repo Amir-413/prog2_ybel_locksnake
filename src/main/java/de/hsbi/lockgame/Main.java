@@ -13,7 +13,7 @@ import java.awt.event.WindowEvent;
 import javax.swing.*;
 
 public class Main {
-  public static void main() {
+  public static void main(String[] args) {
     SwingUtilities.invokeLater(
         () -> {
           try {
@@ -22,10 +22,10 @@ public class Main {
 
             var panel = new GamePanel(engine.state(), new Java2DRenderer());
 
-            // State: Engine -> UI: GamePanel.update(GameState)
+            // State: Engine notifies UI (GamePanel is observer of GameState)
             engine.setGamePanel(panel);
 
-            // Input/Direction: UI -> Engine: GameEngine.update(Direction)
+            // Input: UI notifies Engine (GameEngine is observer of Direction events)
             panel.setGameEngine(engine);
 
             var frame = new JFrame("LockSnake - Prog2");
@@ -37,7 +37,7 @@ public class Main {
             frame.setResizable(false);
             frame.setVisible(true);
 
-            // Game loop: Timer -> Engine: GameEngine.tick()
+            // Game loop: Timer triggers engine tick every TICK_MS milliseconds
             new Timer(
                     GameConstants.TICK_MS,
                     e -> {

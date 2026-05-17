@@ -5,56 +5,78 @@ import java.util.List;
 
 public final class GameState {
 
+  private final Level level;
+  private final Snake snake;
+  private final List<Pin> pins;
+  private final Status status;
+  private final Direction pendingDirection;
+
   public GameState(
       Level level, Snake snake, List<Pin> pins, Status status, Direction pendingDirection) {
-    // TODO: lege einen neuen GameState mit den übergebenen Informationen an
-    throw new UnsupportedOperationException("method not implemented yet");
+    this.level = level;
+    this.snake = snake;
+    this.pins = List.copyOf(pins);
+    this.status = status;
+    this.pendingDirection = pendingDirection;
   }
 
   public Level level() {
-    // TODO: Getter
-    throw new UnsupportedOperationException("method not implemented yet");
+    return level;
   }
 
   public Snake snake() {
-    // TODO: Getter
-    throw new UnsupportedOperationException("method not implemented yet");
+    return snake;
   }
 
   public List<Pin> pins() {
-    // TODO: Getter
-    throw new UnsupportedOperationException("method not implemented yet");
+    return pins;
   }
 
   public Status status() {
-    // TODO: Getter
-    throw new UnsupportedOperationException("method not implemented yet");
+    return status;
   }
 
   public Direction pendingDirection() {
-    // TODO: Getter
-    throw new UnsupportedOperationException("method not implemented yet");
+    return pendingDirection;
   }
 
   public GameState tick() {
-    // TODO: diese Methode lässt das Spiel einen Schritt laufen (berechnet den Spielzustand im
-    // nächsten Schritt)
+    if (!status.isRunning() || pendingDirection == Direction.NONE) {
+      return this;
+    }
 
-    // TODO: early exit: wenn das Spiel nicht läuft oder keine Blickrichtung gesetzt ist: keine
-    // Änderung
+    var nextHead = snake.nextHead(pendingDirection);
 
-    // TODO: prüfe die folgenden Bedingungen:
-    // (a) Schlange würde das Spielfeld verlassen: Spiel verloren
-    // (b) Schlange würde in ein Wandelement gehen: Blockiert (keine Bewegung, Blickrichtung "none")
-    // (c) Schlange beisst sich: Spiel verloren
-    // (d) Schlange würde auf einen Pin gehen (Pin bereits gesetzt oder Schlange kommt nicht in der
-    // Aktivierungsrichtung): Blockiert (keine Bewegung, Blickrichtung "none")
+    if (!level.isInside(nextHead)) {
+      return new GameState(level, snake, pins, Status.LOST_OUT_OF_BOUNDS, Direction.NONE);
+    }
 
-    // TODO: aktiviere einen noch nicht gesetzten Pin, wenn die Schlange in der richtigen Richtung
-    // auf den Pin gehen würde (die Schlange darf dabei aber nicht auf den Pin gehen)
+    if (level.cellAt(nextHead) == CellType.WALL) {
+      return new GameState(level, snake, pins, status, Direction.NONE);
+    }
 
-    // TODO: anderenfalls: bewege die Schlange um einen Schritt in Blickrichtung (falls gesetzt)
-    throw new UnsupportedOperationException("method not implemented yet");
+    if (snake.occupies(nextHead)) {
+      return new GameState(level, snake, pins, Status.LOST_SELF_COLLISION, Direction.NONE);
+    }
+
+    // check if there's a pin at the next position
+    for (var pin : pins) {
+      if (pin.position().equals(nextHead)) {
+        // wrong direction or pin already set → blocked
+        if (pin.state().isSet() || pin.activationDirection() != pendingDirection) {
+          return new GameState(level, snake, pins, status, Direction.NONE);
+        }
+        // activate the pin, snake stays put
+        var newPins = pins.stream()
+            .map(p -> p.position().equals(nextHead) ? p.withState(Pin.State.HIGH) : p)
+            .toList();
+        var allSet = newPins.stream().allMatch(p -> p.state().isSet());
+        var newStatus = allSet ? Status.WON : status;
+        return new GameState(level, snake, newPins, newStatus, Direction.NONE);
+      }
+    }
+
+    return new GameState(level, snake.grow(pendingDirection), pins, status, pendingDirection);
   }
 
   public enum Status {
